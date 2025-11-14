@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Sistema Académico{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      background-color: #F4F1DE;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 280px;
+      background: linear-gradient(135deg, #0D2C63 0%, #1a4480 100%);
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1); overflow-y: auto; }
+    .sidebar-header { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .brand-text { color: white; font-weight: 600; font-size: 1.1rem; margin: 0; }
+    .brand-subtitle { color: rgba(255,255,255,0.7); font-size: 0.8rem; margin: 0; }
+    .sidebar-nav { padding: 1rem 0; }
+    .nav-section { margin-bottom: 1.5rem; }
+    .nav-section-title { color: rgba(255,255,255,0.6); font-size: 0.75rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px; padding: 0 1.5rem 0.5rem; }
+    .nav-link { color: rgba(255,255,255,0.85); padding: 12px 1.5rem; display: flex; align-items: center;
+      gap: 12px; transition: all 0.3s ease; font-weight: 500; }
+    .nav-link:hover { color: white; background: rgba(255,255,255,0.1); padding-left: 2rem; }
+    .nav-link.active { background: rgba(255,255,255,0.15); color: white; border-right: 3px solid #F4F1DE; }
+    .content { margin-left: 280px; padding: 2rem; min-height: 100vh; }
+    @media (max-width: 991px) { .sidebar { width: 100%; height: auto; position: relative; }
+      .content { margin-left: 0; } }
+  </style>
+</head>
+<body>
+  {% if not request.endpoint == 'auth.login' %}
+  <!-- Sidebar -->
+  <nav class="navbar navbar-expand-lg sidebar">
+    <div class="container-fluid d-flex flex-column h-100">
+      <!-- Header con logo -->
+      <div class="sidebar-header w-100 d-flex align-items-center gap-2">
+        <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo" 
+             style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+        <div>
+          <h5 class="brand-text">Sistema Académico</h5>
+          <p class="brand-subtitle">Gestión Integral</p>
+        </div>
+      </div>
+
+      <!-- Navegación -->
+      <div class="collapse navbar-collapse flex-column sidebar-nav" id="sidebarMenu">
+  {% set current_role = override_role if override_role is defined else session.get('user_role') %}
+  {% if not session.get('user_id') %}
+          <!-- No logueado -->
+          <div class="nav-section">
+            <ul class="navbar-nav flex-column w-100">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.login') }}">
+                  <i class="bi bi-box-arrow-in-right"></i>
+                  <span>Login</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        {% else %}
+          <!-- Menú según roles -->
+          {% if current_role == 1 %}
+          <div class="nav-section">
+            <h6 class="nav-section-title">Gestión Académica</h6>
+            <ul class="navbar-nav flex-column w-100">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                  <i class="bi bi-house-door"></i><span>Dashboard</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('evaluacion_integral_bp.gestionar_criterios') }}">
+                  <i class="bi bi-list-check"></i><span>Gestión de Ámbitos Parvularia</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('estudiantes.lista_estudiantes') }}">
+                  <i class="bi bi-people"></i><span>Estudiantes</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('user.user_index') }}">
+                  <i class="bi bi-person-circle"></i><span>Usuarios</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('grados.lista_grados') }}">
+                  <i class="bi bi-building"></i><span>Grados</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('materias.lista_materias') }}">
+                  <i class="bi bi-journal-text"></i><span>Materias</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('secciones.lista_secciones') }}">
+                  <i class="bi bi-layout-text-sidebar"></i><span>Secciones</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('matricula.lista_matriculas') }}">
+                  <i class="bi bi-card-checklist"></i><span>Matrículas</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('materia_seccion.lista_asignaciones') }}">
+                  <i class="bi bi-diagram-3"></i><span>Asignaciones</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('anos_lectivos.listar_anos') }}">
+                  <i class="bi bi-calendar3"></i><span>Años Lectivos</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+          {% elif current_role == 2 or current_role == 3 %}
+          <div class="nav-section">
+            <h6 class="nav-section-title">Docente</h6>
+            <ul class="navbar-nav flex-column w-100">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('coordinador.dashboard') }}">
+                  <i class="bi bi-house-door"></i><span>Dashboard</span>
+                </a>
+              </li>
+              {% if session.get('es_coordinador') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('mis_estudiantes.mis_estudiantes') }}">
+                  <i class="bi bi-people"></i><span>Mis Estudiantes y Boletas</span>
+                </a>
+              </li>
+              {% endif %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('evaluacion_integral_bp.gestionar_criterios') }}">
+                  <i class="bi bi-list-check"></i><span>Gestión de Ámbitos Parvularia</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('inasistencias_bp.grados') }}">
+                  <i class="bi bi-calendar-x"></i><span>Registro de Inasistencias</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('incidentes_bp.grados') }}">
+                  <i class="bi bi-exclamation-triangle"></i><span>Reporte de Incidentes</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('conducta_grado.listar_grados') }}">
+                  <i class="bi bi-star"></i><span>Conducta por Grado</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+          {% endif %}
+
+          <!-- Opciones comunes -->
+          <div class="nav-section">
+            <h6 class="nav-section-title">Cuenta</h6>
+            <ul class="navbar-nav flex-column w-100">
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('change_password.cambiar_contrasena') }}">
+                  <i class="bi bi-key"></i><span>Cambiar Contraseña</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link text-danger" href="{{ url_for('auth.logout') }}">
+                  <i class="bi bi-box-arrow-right"></i><span>Salir</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+  {% endif %}
+
+  <!-- Contenido principal -->
+  <div class="content">
+    {# Mostrar mensajes flash (éxito/errores) en la parte superior del contenido #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="container mb-3">
+          {% for category, message in messages %}
+            {% set bs_class = 'info' %}
+            {% if category == 'danger' %}
+              {% set bs_class = 'danger' %}
+            {% elif category == 'success' %}
+              {% set bs_class = 'success' %}
+            {% elif category == 'warning' %}
+              {% set bs_class = 'warning' %}
+            {% endif %}
+            <div class="alert alert-{{ bs_class }} alert-dismissible fade show" role="alert">
+              {{ message|safe }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

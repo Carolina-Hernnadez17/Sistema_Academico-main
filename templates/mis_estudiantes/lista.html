@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card" style="border-radius:12px; border: 0; box-shadow: 0 6px 18px rgba(13,44,99,0.08);">
+                <div class="card-body" style="background: linear-gradient(90deg, rgba(13,44,99,0.95), rgba(26,64,128,0.95)); color: #fff; border-radius:12px 12px 0 0;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="mb-0" style="font-weight:700; letter-spacing:0.2px">Mis Estudiantes</h3>
+                            <small class="text-white-50">
+                                {% if user_role == 1 %}
+                                    Lista de alumnos asignados en las secciones que coordina
+                                {% else %}
+                                    Lista de alumnos en las materias que imparte
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            {% if user_role == 1 %}
+                                <a href="{{ url_for('coordinador.dashboard') }}" class="btn btn-light btn-sm" style="font-weight:600; color:#0D2C63;"><i class="bi bi-arrow-left"></i> Volver</a>
+                            {% endif %}
+                            <a href="{{ url_for('mis_estudiantes.mis_estudiantes') }}" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-clockwise"></i> Refrescar</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body" style="background: #fff; border-radius: 0 0 12px 12px;">
+                    <div class="row g-2 mb-3">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text" style="background:#0D2C63;color:#fff;border:0"><i class="bi bi-search"></i></span>
+                                <input id="search" class="form-control" placeholder="Buscar por nombre, NIE, grado o sección..." />
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3">
+                            <select id="filter-seccion" class="form-select">
+                                <option value="">Sección (todas)</option>
+                                {% for s in secciones %}
+                                    <option value="{{ s.id }}">{{ s.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-3">
+                            <select id="filter-materia" class="form-select">
+                                <option value="">Materia (todas)</option>
+                                {% for m in materias %}
+                                    <option value="{{ m.id }}">{{ m.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4">
+                            <select id="filter-tipo" class="form-select">
+                                <option value="">Tipo de boleta (todas)</option>
+                                <option value="completa">Boleta completa</option>
+                                <option value="materia">Boleta por materia</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4 text-lg-end">
+                            <span id="total-badge" class="badge" style="background:#0D2C63;color:#fff;font-weight:600">Total: {{ estudiantes|length }}</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tabla-estudiantes" class="table table-hover align-middle">
+                            <thead>
+                                <tr style="background:#f6f8fb;color:#0D2C63;font-weight:700">
+                                    <th>Nombre</th>
+                                    <th>Grado</th>
+                                    <th>Sección</th>
+                                    <th>Materia</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in estudiantes %}
+                                {# tipo: completa si id_asignacion == 0 (coordinador puro), materia si hay asignación #}
+                                <tr class="estudiante-row" data-seccion-id="{{ item.id_seccion|default('') }}" data-materia-id="{{ item.id_materia|default('') }}" data-tipo="{% if item.id_asignacion and item.id_asignacion != 0 %}materia{% else %}completa{% endif %}">
+                                    <td>
+                                        <div style="font-weight:600">{{ item.estudiante.nombres }} {{ item.estudiante.apellidos }}</div>
+                                        <div class="text-muted" style="font-size:0.85rem">NIE: {{ item.estudiante.nie }}</div>
+                                    </td>
+                                    <td>{{ item.grado }}</td>
+                                    <td>{{ item.seccion }}</td>
+                                    <td>{{ item.materia if item.materia else '-' }}</td>
+                                    <td class="text-center">
+                                        {% if user_role == 1 %}
+                                            {% if item.id_asignacion and item.id_asignacion != 0 %}
+                                                <!-- Coordinador-docente: boleta por materia -->
+                                                <a href="{{ url_for('mis_estudiantes.ver_boleta', id_estudiante=item.estudiante.id_estudiante, id_asignacion=item.id_asignacion) }}" class="btn btn-sm btn-primary" title="Ver boleta por materia (HTML)">
+                                                    <i class="bi bi-eye"></i> Ver Boleta - {{ item.materia }}
+                                                </a>
+                                            {% else %}
+                                                <!-- Coordinador: boleta completa -->
+                                                <a href="{{ url_for('mis_estudiantes.ver_boleta', id_estudiante=item.estudiante.id_estudiante, id_asignacion=0) }}" class="btn btn-sm btn-primary" title="Ver boleta completa (HTML)">
+                                                    <i class="bi bi-eye"></i> Ver Boleta Completa
+                                                </a>
+                                            {% endif %}
+                                        {% else %}
+                                            <!-- Docente ve solo sus materias -->
+                                            <a href="{{ url_for('mis_estudiantes.ver_boleta', id_estudiante=item.estudiante.id_estudiante, id_asignacion=item.id_asignacion) }}" class="btn btn-sm btn-primary" title="Ver boleta por materia (HTML)">
+                                                <i class="bi bi-eye"></i> Ver Boleta - {{ item.materia }}
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const search = document.getElementById('search');
+    const filterSeccion = document.getElementById('filter-seccion');
+    const filterMateria = document.getElementById('filter-materia');
+    const filterTipo = document.getElementById('filter-tipo');
+    const totalBadge = document.getElementById('total-badge');
+
+    
+    // Establecer filtro por defecto para coordinador
+    if(filterTipo){
+        filterTipo.value = 'completa';
+    }
+    
+
+    function applyFilters(){
+        const q = search.value.toLowerCase().trim();
+        const sVal = filterSeccion ? filterSeccion.value : '';
+        const mVal = filterMateria ? filterMateria.value : '';
+        const tVal = filterTipo ? filterTipo.value : '';
+        let visible = 0;
+        document.querySelectorAll('#tabla-estudiantes .estudiante-row').forEach(row => {
+            const text = row.innerText.toLowerCase();
+            const matchSearch = text.includes(q);
+            const rowSeccion = row.getAttribute('data-seccion-id') || '';
+            const rowMateria = row.getAttribute('data-materia-id') || '';
+            const rowTipo = row.getAttribute('data-tipo') || '';
+            const matchSeccion = !sVal || rowSeccion === sVal;
+            const matchMateria = !mVal || rowMateria === mVal;
+            const matchTipo = !tVal || rowTipo === tVal;
+            if(matchSearch && matchSeccion && matchMateria && matchTipo){
+                row.style.display = '';
+                visible += 1;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        if(totalBadge) totalBadge.innerText = 'Total: ' + visible;
+    }
+
+    [search, filterSeccion, filterMateria, filterTipo].forEach(function(el){
+        if(el) el.addEventListener('input', applyFilters);
+        if(el && el.tagName === 'SELECT') el.addEventListener('change', applyFilters);
+    });
+
+    // Aplicar filtros al cargar para respetar valor por defecto
+    applyFilters();
+});
+</script>
+{% endblock %}

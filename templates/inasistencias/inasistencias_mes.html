@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/inasistencias.css') }}">
+<div class="page-header">
+  <div class="container">
+    <h1 class="page-title"><i class="fas fa-calendar-times"></i> Inasistencias de {{ estudiante.nombres }} {{ estudiante.apellidos }}</h1>
+    <p class="page-subtitle">Selecciona el mes para ver las inasistencias y registra nuevas</p>
+  </div>
+</div>
+<div class="container">
+  <form method="get" class="mb-3">
+    <div class="row align-items-center">
+      <div class="col-auto">
+        <label for="mes" class="form-label">Mes:</label>
+      </div>
+      <div class="col-auto">
+        <select name="mes" id="mes" class="form-select" onchange="this.form.submit()">
+          {% set meses_nombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre'] %}
+          {% set mes_default = mes if mes is defined and mes else 1 %}
+          {% for m in meses %}
+            <option value="{{ m }}" {% if m == mes_default %}selected{% endif %}>{{ meses_nombres[m-1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <a href="{{ url_for('inasistencias_bp.agregar_inasistencia', id_estudiante=estudiante.id_estudiante) }}" class="btn btn-primary">Agregar inasistencia</a>
+      </div>
+    </div>
+  </form>
+  <div class="calendar-container mb-4">
+    {% set dias_semana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] %}
+    {% set inasistencias_por_dia = {} %}
+    {% for inasistencia in inasistencias %}
+      {% set dia = inasistencia.fecha.day %}
+      {% if dia in inasistencias_por_dia %}
+        {% set _ = inasistencias_por_dia[dia].append(inasistencia) %}
+      {% else %}
+        {% set _ = inasistencias_por_dia.update({dia: [inasistencia]}) %}
+      {% endif %}
+    {% endfor %}
+    <table class="table table-bordered calendar-table">
+      <thead>
+        <tr>
+          {% for d in dias_semana %}
+            <th class="text-center">{{ d }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in weeks %}
+          <tr>
+            {% for day in week %}
+              {% if day %}
+                <td class="text-center {% if day in inasistencias_por_dia %}bg-danger text-white fw-bold{% endif %}">
+                  <div>{{ day }}</div>
+                  {% if day in inasistencias_por_dia %}
+                    <div>
+                      {% for inasistencia in inasistencias_por_dia[day] %}
+                        <a href="{{ url_for('inasistencias_bp.detalle_inasistencia', id_inasistencia=inasistencia.id_inasistencia) }}" class="badge bg-warning text-dark mb-1" title="{{ inasistencia.razon }}">Inasistencia</a>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+              {% else %}
+                <td></td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="mt-2"><span class="badge bg-danger">&nbsp;</span> Días con inasistencia</div>
+  </div>
+  <a href="{{ url_for('inasistencias_bp.estudiantes_grado', id_grado=id_grado) }}" class="btn btn-secondary mt-3">&larr; Volver a estudiantes</a>
+</div>
+{% endblock %}

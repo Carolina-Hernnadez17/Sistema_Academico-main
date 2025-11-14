@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user_index.css') }}">
+
+<div class="page-header">
+  <div class="container">
+    <h1 class="page-title"><i class="fas fa-chalkboard-teacher"></i> Gestión de Docentes</h1>
+    <p class="page-subtitle">Administra la información de todos los docentes registrados</p>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Barra de acciones -->
+  <div class="action-bar">
+    <a href="{{ url_for('user.create_user') }}" class="btn-new"><i class="fas fa-plus"></i> Nuevo Docente</a>
+    <div class="search-box">
+      <i class="fas fa-search search-icon"></i>
+      <input type="text" class="search-input" id="searchInput" placeholder="Buscar por nombre, email, usuario o DUI...">
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="table-container">
+    <div class="table-responsive">
+      <table class="table custom-table" id="teachersTable">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Información Personal</th>
+            <th>Contacto</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Fecha Creación</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          {% for d in user_list %}
+          <tr class="teacher-row" data-search="{{ (d.nombres + ' ' + d.apellidos + ' ' + d.email + ' ' + d.usuario + ' ' + d.identificador)|lower }}">
+            <td>
+                <strong>{{ d.usuario }}</strong>
+                <div class="user-detail">ID: {{ d.id_usuario }}</div>
+            </td>
+            <td>
+                <div class="user-info">
+                    <strong>{{ d.nombres }} {{ d.apellidos }}</strong>
+                    <div class="user-detail">DUI: {{ d.identificador }}</div>
+                </div>
+            </td>
+            <td>
+                <div class="user-info">
+                    <strong>{{ d.email }}</strong>
+                    <div class="user-detail">{{ d.telefono if d.telefono else 'Sin teléfono' }}</div>
+                </div>
+            </td>
+            <td>
+                <span class="role-badge {% if d.id_rol == 1 %}role-admin{% else %}role-teacher{% endif %}">
+                    {% if d.id_rol == 1 %}
+                    <i class="fas fa-shield-alt"></i> Admin
+                    {% else %}
+                    <i class="fas fa-chalkboard-teacher"></i> Docente
+                    {% endif %}
+                </span>
+            </td>
+            <td>
+              {% if d.activo %}
+              <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Activo</span>
+              {% else %}
+              <span class="status-badge status-inactive"><i class="fas fa-times-circle"></i> Inactivo</span>
+              {% endif %}
+            </td>
+            <td>
+                <div class="user-info">
+                    <strong>{{ d.fecha_creacion.strftime('%d/%m/%Y') if d.fecha_creacion else 'N/A' }}</strong>
+                    <div class="user-detail">{{ d.fecha_creacion.strftime('%H:%M') if d.fecha_creacion else '' }}</div>
+                </div>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <a href="{{ url_for('user.edit_user', id=d.id_usuario) }}" class="btn-edit" title="Editar usuario">
+                  <i class="fas fa-edit"></i> Editar
+                </a>
+                {% if d.activo %}
+                <button type="button" class="btn-deactivate" onclick="deactivateUser({{ d.id_usuario }}, '{{ d.nombres }} {{ d.apellidos }}')" title="Desactivar usuario">
+                  <i class="fas fa-ban"></i> Desac.
+                </button>
+                {% else %}
+                <button type="button" class="btn-activate" onclick="activateUser({{ d.id_usuario }}, '{{ d.nombres }} {{ d.apellidos }}')" title="Activar usuario">
+                  <i class="fas fa-check"></i> Activar
+                </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <i class="fas fa-chalkboard"></i>
+                <h4>No hay docentes registrados</h4>
+                <p>Comienza agregando el primer docente al sistema</p>
+                <a href="{{ url_for('user.create_user') }}" class="btn-new" style="margin-top:1rem;">
+                  <i class="fas fa-plus"></i> Agregar Primer Docente
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Paginación Mejorada -->
+  <div class="pagination-container">
+    <div class="pagination-info" id="paginationInfo">
+      Mostrando 0 de 0 registros
+    </div>
+    <div class="pagination">
+      <button id="firstPage" class="pagination-btn">
+        <i class="fas fa-angle-double-left"></i>
+      </button>
+      <button id="prevPage" class="pagination-btn">
+        <i class="fas fa-angle-left"></i>
+      </button>
+      
+      <div class="page-numbers" id="pageNumbers"></div>
+      
+      <div style="display: flex; align-items: center; gap: .5rem;">
+        <span>Ir a:</span>
+        <input type="number" class="page-input" id="pageInput" min="1" value="1">
+      </div>
+      
+      <button id="nextPage" class="pagination-btn">
+        <i class="fas fa-angle-right"></i>
+      </button>
+      <button id="lastPage" class="pagination-btn">
+        <i class="fas fa-angle-double-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4" >
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div >
+          
+          <h4 class="card-title"><svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor" class="bi bi-shield-shaded" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M8 14.933a1 1 0 0 0 .1-.025q.114-.034.294-.118c.24-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.8 11.8 0 0 1-2.517 2.453 7 7 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7 7 0 0 1-1.048-.625 11.8 11.8 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 63 63 0 0 1 5.072.56"/>
+          </svg> Roles disponibles en el sistema</h4>
+        </div>
+
+          <!-- Botón para abrir  crear rol -->
+          <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalCrearRol">
+            <i class="fas fa-plus"></i> Crear Rol
+          </button>
+      </div>
+      
+      <div class="card card-rol" id="cardId">
+        <div class="card-body">
+          <div class="row">
+        {% for rol in list_rol %}
+         
+          {% if loop.index0 % 4 == 0 and not loop.first %}
+            </div><div class="row">
+          {% endif %}
+          
+          <div class="col-md-3 mb-3">
+            <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="">
+                {% if rol.nombre_rol == "Administrador" or rol.nombre_rol == "Administrativo" %}
+                <span class="text-danger"><i class="fa fa-shield"></i> {{rol.nombre_rol}}</span>
+                {% else %}
+                <span class="text-primary"><i class="fas fa-user"></i> {{rol.nombre_rol}}</span>
+                {% endif %}
+              </h5>
+              <span class="">
+                {% if rol.estado== "Activo" %}
+                <span class="status-badge status-active"><i class="fas fa-check-circle"></i> Activo</span>
+                {% else %}
+                <span class="status-badge status-inactive"><i class="fas fa-times-circle"></i> Inactivo</span>
+                {% endif %}
+              </span> 
+
+            </div>
+            <p class="card-text "><p class="text-muted" >Permisos:</p>  {{ rol.descripcion }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              
+              <!-- Botón Editar en cada card de rol -->
+              <button type="button" class="btn btn-warning btn-sm btn-edit-rol"
+                      data-bs-toggle="modal" data-bs-target="#modalEditarRol"
+                      data-id="{{ rol.id_rol }}"
+                      data-nombre="{{ rol.nombre_rol|escape }}"
+                      data-descripcion="{{ rol.descripcion|escape }}"
+                      data-estado="{{ rol.estado }}">
+                  <i class="fas fa-edit"></i> Editar
+              </button>
+
+            </div>
+          </div>
+            </div>
+          </div>
+        {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+<!-- Modal para editar rol (debe estar fuera de cualquier div de contenido) -->
+<div class="modal fade" id="modalEditarRol" tabindex="-1" aria-labelledby="modalEditarRolLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" id="formEditarRol">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEditarRolLabel">Editar Rol</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="id" id="editRolId">
+          <div class="mb-3">
+            <label for="editNombreRol" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="editNombreRol" name="nombre_rol" required>
+          </div>
+          <div class="mb-3">
+            <label for="editDescripcionRol" class="form-label">Descripción</label>
+            <textarea class="form-control" id="editDescripcionRol" name="descripcion" required></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="estadoRol" class="form-label">Estado</label>
+            <select class="form-select" id="estadoRolEdit" name="estado" required>
+              <option value="Activo" selected>Activo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para crear rol -->
+<div class="modal fade" id="modalCrearRol" tabindex="-1" aria-labelledby="modalCrearRolLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('rol.create') }}" id="formCrear">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalCrearRolLabel">Crear Rol</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="nombreRol" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="nombreRol" name="nombre" required>
+          </div>
+          <div class="mb-3">
+            <label for="descripcionRol" class="form-label">Descripción</label>
+            <textarea class="form-control" id="descripcionRol" name="descripcion" required></textarea>
+          </div>
+         
+          <div class="mb-3">
+            <label for="estadoRol" class="form-label">Estado</label>
+            <select class="form-select" id="estadoRol" name="estado" required>
+              <option value="Activo" selected>Activo</option>
+              <option value="Inactivo">Inactivo</option>
+            </select>
+          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Asegúrate de tener Bootstrap JS incluido al final del body -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- JS buscador + paginación mejorada -->
+<script>
+  const rowsPerPage = 10;
+  let currentPage = 1;
+  let filteredRows = [];
+
+  const tableBody = document.getElementById("tableBody");
+  const rows = Array.from(document.querySelectorAll(".teacher-row"));
+  const paginationInfo = document.getElementById("paginationInfo");
+  const pageNumbers = document.getElementById("pageNumbers");
+  const pageInput = document.getElementById("pageInput");
+  
+  // Botones de navegación
+  const firstPageBtn = document.getElementById("firstPage");
+  const prevPageBtn = document.getElementById("prevPage");
+  const nextPageBtn = document.getElementById("nextPage");
+  const lastPageBtn = document.getElementById("lastPage");
+
+  // Inicializar filas filtradas
+  filteredRows = rows;
+
+  function updatePaginationInfo() {
+    const totalRows = filteredRows.length;
+    const start = Math.min((currentPage - 1) * rowsPerPage + 1, totalRows);
+    const end = Math.min(currentPage * rowsPerPage, totalRows);
+    
+    paginationInfo.textContent = `Mostrando ${start} - ${end} de ${totalRows} registros`;
+    
+    pageInput.value = currentPage;
+    pageInput.max = Math.ceil(totalRows / rowsPerPage);
+  }
+
+  function renderTable() {
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+
+    rows.forEach(row => row.style.display = "none");
+    
+    filteredRows.slice(start, end).forEach(row => {
+      row.style.display = "";
+    });
+
+    updatePaginationInfo();
+    renderPagination();
+    updateNavigationButtons();
+  }
+
+  function renderPagination() {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    pageNumbers.innerHTML = "";
+
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    if (endPage - startPage < 4) {
+      startPage = Math.max(1, endPage - 4);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i;
+      btn.classList.add("pagination-btn");
+      if (i === currentPage) btn.classList.add("active");
+      
+      btn.addEventListener("click", () => {
+        currentPage = i;
+        renderTable();
+      });
+      
+      pageNumbers.appendChild(btn);
+    }
+  }
+
+  function updateNavigationButtons() {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    
+    firstPageBtn.disabled = currentPage === 1;
+    prevPageBtn.disabled = currentPage === 1;
+    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+    lastPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+  }
+
+  // Event listeners para búsqueda
+  document.getElementById("searchInput").addEventListener("keyup", function() {
+    const searchValue = this.value.toLowerCase();
+    
+    filteredRows = rows.filter(row => {
+      const text = row.getAttribute("data-search");
+      return text.includes(searchValue);
+    });
+    
+    currentPage = 1;
+    renderTable();
+  });
+
+  // Event listeners para navegación
+  firstPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage = 1;
+      renderTable();
+    }
+  });
+
+  prevPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderTable();
+    }
+  });
+
+  nextPageBtn.addEventListener("click", () => {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderTable();
+    }
+  });
+
+  lastPageBtn.addEventListener("click", () => {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    if (currentPage < totalPages) {
+      currentPage = totalPages;
+      renderTable();
+    }
+  });
+
+  // Event listener para input de página
+  pageInput.addEventListener("change", function() {
+    const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+    let page = parseInt(this.value);
+    
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+    
+    currentPage = page;
+    renderTable();
+  });
+
+  pageInput.addEventListener("keypress", function(e) {
+    if (e.key === 'Enter') {
+      this.blur();
+    }
+  });
+
+  // Función para desactivar usuario
+  async function deactivateUser(userId, userName) {
+    const result = await Swal.fire({
+        title: '¿Desactivar usuario?',
+        text: `¿Estás seguro de que deseas desactivar a ${userName}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, desactivar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await fetch(`/user/deactivate/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    title: '¡Desactivado!',
+                    html: data.mensaje,
+                    icon: data.icon || 'success',
+                    confirmButtonColor: '#0D2C63'
+                }).then(() => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    html: data.mensaje,
+                    icon: data.icon || 'error',
+                    confirmButtonColor: '#0D2C63'
+                });
+            }
+        } catch (error) {
+            Swal.fire({
+                title: 'Error',
+                text: 'Error de conexión. Por favor, intente nuevamente.',
+                icon: 'error',
+                confirmButtonColor: '#0D2C63'
+            });
+        }
+    }
+  }
+
+  // Función para activar usuario
+  async function activateUser(userId, userName) {
+    const result = await Swal.fire({
+        title: '¿Activar usuario?',
+        text: `¿Estás seguro de que deseas activar a ${userName}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, activar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const response = await fetch(`/user/activate/${userId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire({
+                    title: '¡Activado!',
+                    text: data.mensaje,
+                    icon: 'success',
+                    confirmButtonColor: '#0D2C63'
+                }).then(() => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.mensaje,
+                    icon: 'error',
+                    confirmButtonColor: '#0D2C63'
+                });
+            }
+
+            
+
+        } catch (error) {
+            Swal.fire({
+                title: 'Error',
+                text: 'Error de conexión. Por favor, intente nuevamente.',
+                icon: 'error',
+                confirmButtonColor: '#0D2C63'
+            });
+        }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+  var modalEditarRol = document.getElementById('modalEditarRol');
+  if (modalEditarRol) {
+    modalEditarRol.addEventListener('show.bs.modal', function (event) {
+      var button = event.relatedTarget;
+      if (!button) return;
+      document.getElementById('editRolId').value = button.getAttribute('data-id');
+      document.getElementById('editNombreRol').value = button.getAttribute('data-nombre');
+      document.getElementById('editDescripcionRol').value = button.getAttribute('data-descripcion');
+      document.getElementById('estadoRolEdit').value = button.getAttribute('data-estado');
+      document.getElementById('formEditarRol').action = '/edit/' + button.getAttribute('data-id');
+    });
+  }
+
+
+   document.getElementById('formEditarRol').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch(this.action, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: data.mensaje,
+          icon: 'success',
+          confirmButtonColor: '#0D2C63'
+        }).then(() => {
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          }
+        });
+      } else {
+        Swal.fire({
+          title: 'Error',
+          text: data.mensaje,
+          icon: 'error',
+          confirmButtonColor: '#0D2C63'
+        });
+      }
+    })
+    .catch(error => {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error de conexión. Por favor, intente nuevamente.',
+        icon: 'error',
+        confirmButtonColor: '#0D2C63'
+      });
+    });
+  });
+
+
+  document.getElementById('formCrear').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const Data = new FormData(this);
+    fetch(this.action, {
+      method: 'POST',
+      body: Data
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        Swal.fire({
+          title: '¡Éxito!',
+          text: data.mensaje,
+          icon: 'success',
+          confirmButtonColor: '#0D2C63'
+        }).then(() => {
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          }
+        });
+      } else {
+        Swal.fire({
+          title: 'Advetencia',
+          text: data.mensaje,
+          icon: 'warning',
+          confirmButtonColor: '#0D2C63'
+        });
+      }
+    })
+    .catch(error => {
+      Swal.fire({
+        title: 'Error',
+        text: 'Error de conexión. Por favor, intente nuevamente.',
+        icon: 'error',
+        confirmButtonColor: '#0D2C63'
+      });
+    });
+  });
+});
+</script>
+
+{% endblock %}

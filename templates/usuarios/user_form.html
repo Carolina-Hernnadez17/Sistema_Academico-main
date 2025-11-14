@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/user_form.css') }}">
+
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+</div>
+
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-user-plus"></i>
+            {% if user %}Editar Usuario{% else %}Nuevo Usuario{% endif %}
+        </h1>
+        <p class="page-subtitle">
+            {% if user %}Actualiza la información del usuario{% else %}Registra un nuevo usuario en el sistema{% endif %}
+        </p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="progress-indicator">
+        <div class="progress-steps">
+            <div class="progress-step">
+                <div class="step-circle"><i class="fas fa-user"></i></div>
+                <div class="step-label">Datos Personales</div>
+                <div class="progress-line"></div>
+            </div>
+            <div class="progress-step">
+                <div class="step-circle"><i class="fas fa-cog"></i></div>
+                <div class="step-label">Configuración</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <form method="POST" id="userForm" novalidate>
+            <!-- Datos Personales -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-user"></i>Datos Personales</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nombres" class="form-label required-field">Nombres</label>
+                        <input type="text" class="form-control" name="nombres" id="nombres"
+                               value="{{ user.nombres if user else '' }}"
+                               oninput="this.value = this.value.toUpperCase()" required>
+                        <div class="invalid-feedback">Ingrese los nombres.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apellidos" class="form-label required-field">Apellidos</label>
+                        <input type="text" class="form-control" name="apellidos" id="apellidos"
+                               value="{{ user.apellidos if user else '' }}"
+                               oninput="this.value = this.value.toUpperCase()" required>
+                        <div class="invalid-feedback">Ingrese los apellidos.</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label required-field">Correo Electrónico</label>
+                        <input type="email" class="form-control" name="email" id="email"
+                               value="{{ user.email if user else '' }}" required>
+                        <div class="invalid-feedback">Ingrese un email válido.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono" class="form-label">Teléfono</label>
+                        <input type="tel" class="form-control" name="telefono" id="telefono"
+                               value="{{ user.telefono if user else '' }}" placeholder="0000-0000"
+                               pattern="[0-9]{4}-[0-9]{4}">
+                        <div class="invalid-feedback">Ingrese un teléfono válido (0000-0000).</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="identificador" class="form-label required-field">DUI</label>
+                        <input type="text" class="form-control" name="identificador" id="identificador"
+                            value="{{ user.identificador if user else '' }}" placeholder="00000000-0" required>
+                        <div class="invalid-feedback">Ingrese un DUI válido.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración -->
+            <div class="form-section">
+                <h3 class="section-title"><i class="fas fa-cog"></i>Configuración</h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="usuario" class="form-label required-field">Usuario</label>
+                        <input type="text" class="form-control" name="usuario" id="usuario"
+                               value="{{ user.usuario if user else '' }}" required>
+                        <div class="invalid-feedback">Ingrese un usuario.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="password" class="form-label {% if not user %}required-field{% endif %}">Contraseña</label>
+                        <input type="password" class="form-control" name="password" id="password"
+                               {% if not user %}required{% endif %}>
+                        <div class="form-help">
+                            {% if user %}Dejar vacío para mantener la contraseña actual{% endif %}
+                        </div>
+                        <div class="invalid-feedback">Ingrese una contraseña.</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_rol" class="form-label required-field">Rol</label>
+                        <select class="form-select" name="id_rol" id="id_rol" required>
+                            {% for rol in roles %}
+                                <option value="{{ rol.id_rol }}"
+                                    {% if user and user.id_rol == rol.id_rol %}selected{% endif %}>
+                                    {{ rol.nombre_rol }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="invalid-feedback">Seleccione un rol.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="activo" class="form-label">Estado</label>
+                        <select class="form-select" name="activo" id="activo">
+                            <option value="1" {% if not user or user.activo %}selected{% endif %}>Activo</option>
+                            <option value="0" {% if user and not user.activo %}selected{% endif %}>Inactivo</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-success" id="submitBtn">
+                    <i class="fas fa-save"></i>
+                    {% if user %}Actualizar Usuario{% else %}Guardar Usuario{% endif %}
+                </button>
+                <a href="{{ url_for('user.user_index') }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    let form = document.getElementById('userForm');
+    let submitBtn = document.getElementById('submitBtn');
+    let loadingOverlay = document.getElementById('loadingOverlay');
+
+    // --- Reglas de validación ---
+    const reglas = {
+        nombres: {
+            required: true,
+            pattern: /^[A-ZÁÉÍÓÚÑ\s]+$/i,
+            msg: "Ingrese nombres válidos (solo letras)."
+        },
+        apellidos: {
+            required: true,
+            pattern: /^[A-ZÁÉÍÓÚÑ\s]+$/i,
+            msg: "Ingrese apellidos válidos (solo letras)."
+        },
+        email: {
+            required: true,
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            msg: "Ingrese un correo válido (ejemplo@dominio.com)."
+        },
+        telefono: {
+            required: false,
+            pattern: /^[0-9]{4}-[0-9]{4}$/,
+            msg: "Formato correcto: 0000-0000"
+        },
+        identificador: {
+            required: true,
+            pattern: /^[0-9]{8}-[0-9]{1}$/,
+            msg: "Formato correcto: 00000000-0"
+        },
+        usuario: {
+            required: true,
+            pattern: /^[A-Za-z0-9._-]{4,20}$/,
+            msg: "El usuario debe tener entre 4 y 20 caracteres."
+        },
+        password: {
+            required: form.querySelector("#password").hasAttribute("required"),
+            pattern: /^.{6,}$/,
+            msg: "La contraseña debe tener al menos 6 caracteres."
+        }
+    };
+
+    // --- Función de validación de campo ---
+    function validarCampo(input){
+        let regla = reglas[input.id];
+        if(!regla) return true;
+
+        let valor = input.value.trim();
+        let valido = true;
+
+        if(regla.required && !valor){
+            valido = false;
+            regla.msg = "Este campo es obligatorio.";
+        } else if(valor && regla.pattern && !regla.pattern.test(valor)){
+            valido = false;
+        }
+
+        let feedback = input.parentElement.querySelector(".invalid-feedback, .valid-feedback");
+        if(!feedback){
+            feedback = document.createElement("div");
+            input.parentElement.appendChild(feedback);
+        }
+
+        if(!valido){
+            input.classList.add("is-invalid");
+            input.classList.remove("is-valid");
+            feedback.className = "invalid-feedback";
+            feedback.textContent = regla.msg;
+            feedback.style.display = "block";
+        } else {
+            input.classList.remove("is-invalid");
+            input.classList.add("is-valid");
+            feedback.className = "valid-feedback";
+            feedback.textContent = "✔ Campo válido";
+            feedback.style.display = "block";
+        }
+        return valido;
+    }
+
+    // --- Escuchar inputs en tiempo real ---
+    form.querySelectorAll(".form-control, .form-select").forEach(input => {
+        input.addEventListener("input", () => validarCampo(input));
+        input.addEventListener("blur", () => validarCampo(input));
+        input.addEventListener("change", () => validarCampo(input));
+    });
+
+    // --- Mostrar loading ---
+    function showLoading() {
+        loadingOverlay.style.display = 'flex';
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    }
+
+    // --- Ocultar loading ---
+    function hideLoading() {
+        loadingOverlay.style.display = 'none';
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> {% if user %}Actualizar Usuario{% else %}Guardar Usuario{% endif %}';
+    }
+
+    // --- Manejar respuesta del servidor ---
+    function handleServerResponse(response) {
+        if (response.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: response.mensaje,
+                confirmButtonColor: '#0D2C63',
+                timer: 2000,
+                showConfirmButton: true
+            }).then(() => {
+                if (response.redirect) {
+                    window.location.href = response.redirect;
+                }
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: response.mensaje,
+                confirmButtonColor: '#0D2C63'
+            });
+        }
+    }
+
+    // --- Enviar formulario vía AJAX ---
+    async function submitForm(formData) {
+        try {
+            const response = await fetch('{{ url_for("user.create_user") if not user else url_for("user.edit_user", id=user.id_usuario) }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error:', error);
+            return {
+                success: false,
+                mensaje: 'Error de conexión. Por favor, intente nuevamente.'
+            };
+        }
+    }
+
+    // --- Validación al enviar ---
+    form.addEventListener("submit", async function(e){
+        e.preventDefault();
+        
+        let valido = true;
+        form.querySelectorAll(".form-control, .form-select").forEach(input => {
+            if(!validarCampo(input)) valido = false;
+        });
+
+        if(!valido){
+            Swal.fire({
+                icon: "error",
+                title: "Revisa los campos",
+                text: "Hay errores en el formulario, corrígelos antes de continuar.",
+                confirmButtonColor: "#0D2C63"
+            });
+            return false;
+        }
+
+        // Confirmación antes de enviar
+        const result = await Swal.fire({
+            icon: "question",
+            title: "Confirmar",
+            text: "¿Desea guardar los cambios?",
+            showCancelButton: true,
+            confirmButtonText: "Sí, guardar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#0D2C63"
+        });
+
+        if(result.isConfirmed){
+            showLoading();
+            
+            try {
+                const formData = new FormData(form);
+                const response = await submitForm(formData);
+                
+                handleServerResponse(response);
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error inesperado. Por favor, intente nuevamente.',
+                    confirmButtonColor: '#0D2C63'
+                });
+            } finally {
+                hideLoading();
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}
